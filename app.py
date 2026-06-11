@@ -120,13 +120,13 @@ def get_vectorstore_and_llm():
     
     if provider == "groq":
         from langchain_groq import ChatGroq
-        llm = ChatGroq(model=model, temperature=0.1, max_tokens=512)
+        llm = ChatGroq(model=model, temperature=0, max_tokens=1024)
     elif provider == "openai":
         from langchain_openai import ChatOpenAI
-        llm = ChatOpenAI(model=model, temperature=0.1, max_tokens=512)
+        llm = ChatOpenAI(model=model, temperature=0, max_tokens=1024)
     elif provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model=model, temperature=0.1, max_output_tokens=512)
+        llm = ChatGoogleGenerativeAI(model=model, temperature=0, max_output_tokens=1024)
     else:
         llm = None
         
@@ -138,14 +138,20 @@ if vectorstore is None or llm is None:
     st.error("Error: FAISS Vectorstore or LLM not initialized. Make sure you run the starter notebook first!")
     st.stop()
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
 # Setup RAG and Guardrails
 RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful HR help desk assistant for Acrux Dynamics.
+    ("system", """You are a precise and helpful HR help desk assistant for Acrux Dynamics.
 Answer the question based ONLY on the following retrieved context.
 If the context does not contain the answer, state: "I don't have that information in the documentation."
-Do not make up facts or assume anything not directly mentioned in the context.
+
+IMPORTANT RULES:
+- Be SPECIFIC and PRECISE — include exact numbers, dates, percentages, durations, and amounts mentioned in the policy.
+- Quote or closely paraphrase the relevant policy text when possible.
+- Do NOT make up facts, infer, or assume anything not directly stated in the context.
+- If multiple policies apply, mention all of them.
+- Structure your answer clearly.
 
 Context:
 {context}"""),
@@ -156,14 +162,22 @@ OOS_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """You are a guardrail classifier for an HR Help Desk chatbot at Acrux Dynamics.
 Your task is to classify whether the user's question is IN-SCOPE or OUT-OF-SCOPE.
 
-IN-SCOPE queries:
-- Questions about Acrux Dynamics HR policies, leaves, holidays, benefits, insurance, salary, payroll, performance reviews, PIP, WFH (work from home) arrangements, ESOPs, recruitment/hiring process, or general workplace queries for employees.
+IN-SCOPE queries (answer these):
+- Questions about Acrux Dynamics HR policies, employee handbook, or company workplace rules.
+- Leaves: earned leave, casual leave, sick leave, maternity leave, paternity leave, bereavement leave, compensatory off, leave encashment, carry forward limits.
+- Compensation: salary, CTC, grades (L1-L6), bonuses, increments, payroll, payroll cut-off dates.
+- Benefits: insurance, health benefits, ESOPs, gratuity, PF.
+- Work arrangements: WFH (work from home), hybrid, remote work, attendance.
+- Performance: reviews, appraisals, PIP (Performance Improvement Plan), probation.
+- Recruitment: hiring process, referrals, onboarding.
+- Holidays: public holidays, optional holidays, holiday calendar.
+- Any other question about internal HR processes at Acrux Dynamics.
 
-OUT-OF-SCOPE queries:
-- Questions about other companies (like Zoho, Freshworks, Salesforce, etc.).
-- Questions about technical product features (like AcruxCRM vs Salesforce).
-- Financial performance or revenue of Acrux Dynamics.
-- General questions unrelated to HR policies (e.g., cooking, programming, news, math).
+OUT-OF-SCOPE queries (refuse these):
+- Questions about OTHER companies (Zoho, Freshworks, Salesforce, Google, TCS, Infosys, etc.).
+- Questions about technical products or product comparisons (e.g., AcruxCRM vs Salesforce).
+- Financial performance, revenue, stock price, or business strategy of Acrux Dynamics.
+- General knowledge unrelated to HR (cooking, programming, news, math, science, sports, entertainment).
 
 Respond with exactly one word: "IN-SCOPE" or "OUT-OF-SCOPE". Do not explain.
 """),
