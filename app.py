@@ -99,6 +99,10 @@ if os.path.exists(".env"):
     from dotenv import load_dotenv
     load_dotenv()
 
+# Inject Streamlit secrets into environment variables
+for key in st.secrets.keys():
+    os.environ[key] = str(st.secrets[key])
+
 # Initialize session state for LLM and Vector Store
 @st.cache_resource
 def get_vectorstore_and_llm():
